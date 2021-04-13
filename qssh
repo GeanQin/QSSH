@@ -1,0 +1,73 @@
+#!/bin/python3
+
+import sys
+import os
+
+help = "\
+Usage: qssh [option] ...\n\n\
+option:\n\
+\tnew [tag] [username] [ip] [password]\tadd or update a remote host\n\
+\tdelete [tags]\t\t\t\tdelete remote hosts\n\
+\tlist\t\t\t\t\tlist all remote hosts\n\
+\tconnect [tag]\t\t\t\tconnect to a remote host"
+config_path = "/etc/qssh.cfg"
+
+def usage():
+	print(help)
+	exit()
+
+def change_cfg(option, tag, content):
+	if len(sys.argv) < 3:
+		usage()
+
+	cfg_read = open(config_path, "r")
+	cfg_list = cfg_read.readlines()
+	cfg_read.close()
+
+	cfg_write = open(config_path, "w")
+	tag_len = len(tag)
+	for cfg_item in cfg_list:
+		if cfg_item[: tag_len] == tag and cfg_item[tag_len: tag_len + 1] == "\t":
+			continue
+		cfg_write.write(cfg_item)
+	if option == "new":
+		cfg_write.write(content)
+	cfg_write.flush()
+	cfg_write.close()
+
+def main():
+	if len(sys.argv) < 2:
+		usage()
+	
+	if sys.argv[1] == "new":
+		if len(sys.argv) < 6:
+			usage()
+		content = "%s\t%s@%s\t%s\n" % (sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+		change_cfg(sys.argv[1], sys.argv[2], content)
+	elif sys.argv[1] == "delete":
+		for i in range(2, len(sys.argv)):
+			change_cfg(sys.argv[1], sys.argv[i], "")
+	elif sys.argv[1] == "list":
+		print("TAG\t\tUSER@ADDRESS\tPASSWORD")
+		cfg = open(config_path, "r")
+		print(cfg.read())
+		cfg.close()
+	elif sys.argv[1] == "connect":
+		if len(sys.argv) < 3:
+			usage()
+
+		cfg = open(config_path, "r")
+		cfg_list = cfg.readlines()
+		cfg.close()
+
+		for cfg_item in cfg_list:
+			cfg_num = cfg_item.split("\t")
+			if cfg_num[0] == sys.argv[2]:
+				cmd = 'sshpass -p "%s" ssh %s' % (cfg_num[2], cfg_num[1])
+				os.system(cmd)
+				break
+	else:
+		usage()
+
+if __name__ == '__main__':
+	main()
